@@ -3,7 +3,7 @@
 A Tool for visualizing marks in Argo ScuolaNext.
 
 ## Dependencies
-Python 3.6 +
+Python 3.6 or higher
 - matplotlib
 - numpy
 - requests
@@ -14,7 +14,7 @@ Python 3.6 +
     argo-marks-graph.py [OPTIONS]
 
     -h, --help                        Print this help and exit
-    -s, --school CODE                 Sets the school code [xxxxxxx]
-    -u, --user USERNAME               Sets the username used for the login
-    -p, --password PASSWORD           Sets the password used for the login
-    -f, --file FILENAME               Redirect the output to a image on the specified file (Only .png is supported)
+    -s, --school CODE                 School code [7 digits code]
+    -u, --user USERNAME               Username used for the login
+    -p, --password PASSWORD           Password used for the login
+    -f, --file FILENAME               Redirect the output to an image on the specified file (.png only)
