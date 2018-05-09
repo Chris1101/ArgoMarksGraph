@@ -15,6 +15,6 @@ Python 3.6 +
 
     -h, --help                        Print this help and exit
     -s, --school CODE                 Sets the school code
-    -u, --user USERNAME               Sets the username for the login
-    -p, --password PASSWORD           Sets the password for the login
+    -u, --user USERNAME               Sets the username used for the login
+    -p, --password PASSWORD           Sets the password used for the login
     -f, --file FILENAME               Saves the image of the graph on the specified file (.png)
