@@ -2,6 +2,9 @@
 
 Strumento per visualizzare un grafico dei voti in Argo ScuolaNext.
 
+###### [English Readme Version](https://github.com/Chris1101/ArgoMarksGraph/blob/master/README-EN.md)
+
+
 ## Dipendenze
 Python 3.6 o maggiore
 - matplotlib
@@ -9,6 +12,7 @@ Python 3.6 o maggiore
 - requests
 - json
 - argparse
+- getpass
 
 ## Uso
     argo-marks-graph.py [OPTIONS]
@@ -18,3 +22,4 @@ Python 3.6 o maggiore
     -u, --user NOMEUTENTE             Nome utente usato nel login
     -p, --password PASSWORD           Password usata nel login
     -f, --file NOMEFILE               Salva il grafico sul file indicato (solo .png)
+
