@@ -7,7 +7,7 @@ def get_graph():
 	api_response = get_marks()
 
 	for vote in api_response['dati']:
-		if vote['decValore'] != None and vote.get('desMateria'):
+		if vote['decValore'] and vote.get('desMateria'):
 			if marks_dict.get(vote['desMateria']):
 				marks_dict[vote['desMateria']].append(vote['decValore'])
 			else:
