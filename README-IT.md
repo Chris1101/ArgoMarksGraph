@@ -10,6 +10,7 @@ Python 3.6 o maggiore
 - json
 - argparse
 - getpass
+- datetime
 
 ## Uso
     argo-marks-graph.py [OPTIONS]
@@ -19,4 +20,4 @@ Python 3.6 o maggiore
     -u, --user NOMEUTENTE             Nome utente usato nel login
     -p, --password PASSWORD           Password usata nel login
     -f, --file NOMEFILE               Salva il grafico sul file indicato (solo .png)
-
+    -b, --big                         Visualizza un grafico di dimensioni maggiori
