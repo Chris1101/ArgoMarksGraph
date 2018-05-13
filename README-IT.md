@@ -1,6 +1,6 @@
 # Argo Marks Graph
 Strumento per visualizzare un grafico dei voti in Argo ScuolaNext.
-###### [English Readme Version](https://github.com/Chris1101/ArgoMarksGraph/blob/master/README-EN.md)
+###### [English Readme Version](https://github.com/Chris1101/ArgoMarksGraph/blob/master/README.md)
 
 ## Dipendenze
 Python 3.6 o maggiore
