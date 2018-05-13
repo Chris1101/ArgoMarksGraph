@@ -1,6 +1,6 @@
 # Argo Marks Graph
 A Tool for visualizing marks in Argo ScuolaNext.
-###### [Italian Readme Version](https://github.com/Chris1101/ArgoMarksGraph/blob/master/README.md)
+###### [Italian Readme Version](https://github.com/Chris1101/ArgoMarksGraph/blob/master/README-IT.md)
 
 ## Dependencies
 Python 3.6 or higher
