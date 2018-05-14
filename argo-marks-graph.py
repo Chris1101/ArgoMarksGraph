@@ -106,9 +106,9 @@ def get_graph():
 		print('La tua Media totale e\':', round(avg_all, 2))
 
 	ax.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
+	lines.append(ax.axhline(y = avg_all, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3))
 	ax.axhline(y = 6, alpha = 0.2, color = 'r', linestyle = '--', label = 'Sufficienza', linewidth = 3)
-	ax.axhline(y = avg_all, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3)
-
+	
 	if args.file or args.big:
 		leg = ax.legend(loc = 4)
 		leg.get_frame().set_alpha(0.4)
