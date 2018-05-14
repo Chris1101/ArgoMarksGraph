@@ -19,113 +19,121 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 
 def get_graph():
-    avg_all, marks_tot = 0, 0
-    date_all = []
-    marks_dict = {}
-    time_delta, api_response = datetime.timedelta(days=3), get_marks()
+	avg_all, marks_tot = 0, 0
+	date_all = []
+	marks_dict = {}
+	time_delta, api_response = datetime.timedelta(days=3), get_marks()
 
-    if not args.file and not args.big:
-        ax = plt.figure(figsize=(12.4, 5)).add_subplot(1, 1, 1)
-    else:
-        ax = plt.figure(figsize=(18, 10)).add_subplot(1, 1, 1)
+	if not args.file and not args.big:
+		ax = plt.figure(figsize=(12.4, 5)).add_subplot(1, 1, 1)
+	else:
+		ax = plt.figure(figsize=(18, 10)).add_subplot(1, 1, 1)
 
-    plt.gcf().canvas.set_window_title('Grafico Voti')
-    plt.grid(which='both')
-    major_ticks = np.arange(0, 11, 1)
-    minor_ticks = np.arange(0, 11, 0.5)
-    ax.set_yticks(major_ticks)
-    ax.set_yticks(minor_ticks, minor=True)
-    ax.grid(which='major', alpha=0.5)
-    ax.grid(which='minor', alpha=0.2)
+	plt.gcf().canvas.set_window_title('Grafico Voti')
+	plt.grid(which='both')
+	major_ticks = np.arange(0, 11, 1)
+	minor_ticks = np.arange(0, 11, 0.5)
+	ax.set_yticks(major_ticks)
+	ax.set_yticks(minor_ticks, minor=True)
+	ax.grid(which='major', alpha=0.5)
+	ax.grid(which='minor', alpha=0.2)
 
-    for vote in api_response['dati']:
-        if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
-            if marks_dict.get(vote['desMateria']):
-                marks_dict[vote['desMateria']][0].append(vote['decValore'])
-                marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
-            else:
-                marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
+	for vote in api_response['dati']:
+		if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
+			if marks_dict.get(vote['desMateria']):
+				marks_dict[vote['desMateria']][0].append(vote['decValore'])
+				marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
+			else:
+				marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
 
-    for subj in marks_dict:
-        avg_subj, date_subj = 0, []
+	for subj in marks_dict:
+		avg_subj, date_subj = 0, []
 
-        for day in marks_dict[subj][1]:
-            date_subj.append(datetime.datetime.strptime(day, '%Y-%m-%d'))
-            date_all.append(datetime.datetime.strptime(day, '%Y-%m-%d'))
+		for day in marks_dict[subj][1]:
+			date_subj.append(datetime.datetime.strptime(day, '%Y-%m-%d'))
+			date_all.append(datetime.datetime.strptime(day, '%Y-%m-%d'))
 
-        for v in marks_dict[subj][0]:
-            avg_subj += v
-            avg_all += v
+		for v in marks_dict[subj][0]:
+			avg_subj += v
+			avg_all += v
 
-        plt.plot(date_subj[::-1], marks_dict[subj][0][::-1], label=subj, marker='o', alpha=0.9)
-        marks_tot += len(marks_dict[subj][0])
+		plt.plot(date_subj[::-1], marks_dict[subj][0][::-1], label=subj, marker='o', alpha=0.9)
+		marks_tot += len(marks_dict[subj][0])
 	
-        if args.verbose:
-            print(subj + ': ' + str(' - '.join(str(x) for x in marks_dict[subj][0][::-1])))
-            print('Media: ' + str(round(avg_subj / len(marks_dict[subj][0]), 2)), end='\n\n')
+		if args.verbose:
+			print(subj + ': ' + str(' - '.join(str(x) for x in marks_dict[subj][0][::-1])))
+			print('Media: ' + str(round(avg_subj / len(marks_dict[subj][0]), 2)), end='\n\n')
 
-    avg_all /= marks_tot
+	avg_all /= marks_tot
 
-    if args.verbose:
-        print('La tua Media totale e\':', round(avg_all, 2))
+	if args.verbose:
+		print('La tua Media totale e\':', round(avg_all, 2))
 
-    plt.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
-    plt.axhline(y=6, alpha=0.2, color='r', linestyle='--', label='Sufficienza', linewidth=3)
-    plt.axhline(y=avg_all, alpha=0.2, color='g', linestyle='-', label='Media', linewidth=3)
+	plt.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
+	plt.axhline(y=6, alpha=0.2, color='r', linestyle='--', label='Sufficienza', linewidth=3)
+	plt.axhline(y=avg_all, alpha=0.2, color='g', linestyle='-', label='Media', linewidth=3)
 
-    if args.file or args.big:
-        plt.legend(loc=4)
-        plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.05)
+	if args.file or args.big:
+		plt.legend(loc=4)
+		plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.05)
 
-        if args.file:
-            plt.savefig(args.file + '.png' if not args.file.endswith('.png') else args.file, format='png', dpi=300)
-            print('Grafico salvato nel file ' + args.file + ('.png' if not args.file.endswith('.png') else ''))
+		if args.file:
+			plt.savefig(args.file + '.png' if not args.file.endswith('.png') else args.file, format='png', dpi=300)
+			print('Grafico salvato nel file ' + args.file + ('.png' if not args.file.endswith('.png') else ''))
 
-        if args.big:
-            plt.show()
-    else:
-        plt.legend(bbox_to_anchor=(1, 1), loc="upper left", prop={ 'size': 8})
-        plt.subplots_adjust(left=0.02, right=0.7, top=0.98, bottom =0.05)
-        plt.show()
+		if args.big:
+			plt.show()
+	else:
+		plt.legend(bbox_to_anchor=(1, 1), loc="upper left", prop={ 'size': 8})
+		plt.subplots_adjust(left=0.02, right=0.7, top=0.98, bottom =0.05)
+		plt.show()
 
 def get_marks():
-    base_header={'x-cod-min': SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
-    loginheader={'x-user-id': USERNAME, 'x-pwd': PASSWORD}
-    loginheader.update(base_header)
-    token = json.loads(request('login', loginheader))['token']
-    token_header = {'x-auth-token': token}
-    token_header.update(base_header)
-    userdata = json.loads(request('schede', token_header))[0]
-    base_header = token_header
-    data_header = dict({'x-prg-alunno': str(userdata['prgAlunno']), 'x-prg-scheda': str(userdata['prgScheda']), 'x-prg-scuola': str(userdata['prgScuola'])})
-    data_header.update(base_header)
+	base_header={'x-cod-min': SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
+	loginheader={'x-user-id': USERNAME, 'x-pwd': PASSWORD}
+	loginheader.update(base_header)
+	token = json.loads(request('login', loginheader))['token']
+	token_header = {'x-auth-token': token}
+	token_header.update(base_header)
+	userdata = json.loads(request('schede', token_header))[0]
+	base_header = token_header
+	data_header = dict({'x-prg-alunno': str(userdata['prgAlunno']), 'x-prg-scheda': str(userdata['prgScheda']), 'x-prg-scuola': str(userdata['prgScuola'])})
+	data_header.update(base_header)
 
-    return json.loads(request('votigiornalieri', data_header))
+	return json.loads(request('votigiornalieri', data_header))
 
 def request(page, header):
-    r = requests.get(
-        url=ARGOAPI_URL + page,
-        headers=header,
-    )
+	r = requests.get(
+		url=ARGOAPI_URL + page,
+		headers=header,
+	)
 
-    if r.status_code != requests.codes.ok:
-        raise ConnectionRefusedError('[ERROR: ' + str(r.status_code) + ']')
+	if r.status_code != requests.codes.ok:
+		print('ERRORE:', r.status_code)
+		raise ConnectionRefusedError()
 
-    return r.text
+	return r.text
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--school')
-    parser.add_argument('-u', '--username')
-    parser.add_argument('-p', '--password')
-    parser.add_argument('-f', '--file')
-    parser.add_argument('-b', '--big', action='store_true')
-    parser.add_argument('-v', '--verbose', action='store_true')
-    args = parser.parse_args()
+	c = 1
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-s', '--school')
+	parser.add_argument('-u', '--username')
+	parser.add_argument('-p', '--password')
+	parser.add_argument('-f', '--file')
+	parser.add_argument('-b', '--big', action='store_true')
+	parser.add_argument('-v', '--verbose', action='store_true')
+	args = parser.parse_args()
 
-    SCHOOL_CODE = input('Codice Scuola: ') if not args.school else args.school
-    USERNAME = input('Username: ') if not args.username else args.username
-    PASSWORD = getpass.getpass('Password: ') if not args.password else args.password
-
-    get_graph()
+	SCHOOL_CODE = input('Codice Scuola: ') if not args.school else args.school
+	
+	while c:
+		USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
+		PASSWORD = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
+		try:
+			get_graph()
+			c = 0
+		except:
+			print('Credenziali Errate', end = '\n\n')
+			c += 1
