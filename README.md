@@ -4,13 +4,11 @@ A Tool for visualizing marks in Argo ScuolaNext.
 
 ## Dependencies
 Python 3.6 or higher
+> pip install -r requirements.txt
+
 - matplotlib
 - numpy
 - requests
-- json
-- argparse
-- getpass
-- datetime
 
 ## Usage
     argo-marks-graph.py [OPTIONS]
