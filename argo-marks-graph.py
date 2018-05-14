@@ -16,7 +16,7 @@ ARGOAPI_URL = 'https://www.portaleargo.it/famiglia/api/rest/'
 ARGOAPI_KEY = 'ax6542sdru3217t4eesd9'
 ARGOAPI_VERSION = '2.0.2'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
-
+TOGGLE = False
 
 def onpick(event):
 	fig, lines, lined, legline, origline = get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline
@@ -24,11 +24,29 @@ def onpick(event):
 	origline = lined[legline]
 	vis = not origline.get_visible()
 	origline.set_visible(vis)
-
+	
 	if vis:
 		legline.set_alpha(1.0)
 	else:
 		legline.set_alpha(0.2)
+
+	fig.canvas.draw()
+
+def onclick(event):
+	fig, lines, lined, legline, origline = get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline
+	global TOGGLE
+
+	if event.button == 3:
+		for origline in lines:
+			origline.set_visible(TOGGLE)
+
+		for legline in lined:
+			if TOGGLE:
+				legline.set_alpha(1.0)
+			else:
+				legline.set_alpha(0.2)
+
+	TOGGLE = not TOGGLE
 
 	fig.canvas.draw()
 
@@ -108,6 +126,7 @@ def get_graph():
 		if args.big:
 			get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline = fig, lines, lined, legline, origline
 			fig.canvas.mpl_connect('pick_event', onpick)
+			fig.canvas.mpl_connect('button_press_event', onclick)
 			plt.show()
 	else:
 		leg = ax.legend(bbox_to_anchor = (1, 1), loc = "upper left", prop = {'size': 8})
@@ -120,6 +139,7 @@ def get_graph():
 		fig.subplots_adjust(left = 0.02, right = 0.7, top = 0.98, bottom = 0.05)
 		get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline = fig, lines, lined, legline, origline
 		fig.canvas.mpl_connect('pick_event', onpick)
+		fig.canvas.mpl_connect('button_press_event', onclick)
 		plt.show()
 
 def get_marks():
