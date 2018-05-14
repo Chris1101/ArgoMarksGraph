@@ -7,10 +7,6 @@ Python 3.6 o maggiore
 - matplotlib
 - numpy
 - requests
-- json
-- argparse
-- getpass
-- datetime
 
 ## Uso
     argo-marks-graph.py [OPTIONS]
