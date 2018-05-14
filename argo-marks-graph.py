@@ -18,25 +18,41 @@ ARGOAPI_VERSION = '2.0.2'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
 
 
+def onpick(event):
+	fig, lines, lined, legline, origline = get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline
+	legline = event.artist
+	origline = lined[legline]
+	vis = not origline.get_visible()
+	origline.set_visible(vis)
+
+	if vis:
+		legline.set_alpha(1.0)
+	else:
+		legline.set_alpha(0.2)
+
+	fig.canvas.draw()
+
 def get_graph():
 	avg_all, marks_tot = 0, 0
-	date_all = []
-	marks_dict = {}
-	time_delta, api_response = datetime.timedelta(days=3), get_marks()
+	date_all, lines = [], []
+	marks_dict, lined = {}, {}
+	time_delta, api_response = datetime.timedelta(days = 3), get_marks()
 
 	if not args.file and not args.big:
-		ax = plt.figure(figsize=(12.4, 5)).add_subplot(1, 1, 1)
+		fig = plt.figure(figsize = (12.4, 5))
+		ax = fig.add_subplot(1, 1, 1)
 	else:
-		ax = plt.figure(figsize=(18, 10)).add_subplot(1, 1, 1)
+		fig = plt.figure(figsize = (18, 10))
+		ax = fig.add_subplot(1, 1, 1)
 
 	plt.gcf().canvas.set_window_title('Grafico Voti')
-	plt.grid(which='both')
+	plt.grid(which = 'both')
 	major_ticks = np.arange(0, 11, 1)
 	minor_ticks = np.arange(0, 11, 0.5)
 	ax.set_yticks(major_ticks)
-	ax.set_yticks(minor_ticks, minor=True)
-	ax.grid(which='major', alpha=0.5)
-	ax.grid(which='minor', alpha=0.2)
+	ax.set_yticks(minor_ticks, minor = True)
+	ax.grid(which = 'major', alpha = 0.5)
+	ax.grid(which = 'minor', alpha = 0.2)
 
 	for vote in api_response['dati']:
 		if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
@@ -57,7 +73,9 @@ def get_graph():
 			avg_subj += v
 			avg_all += v
 
-		plt.plot(date_subj[::-1], marks_dict[subj][0][::-1], label=subj, marker='o', alpha=0.9)
+		tmp, = ax.plot(date_subj[::-1], marks_dict[subj][0][::-1], label = subj, marker = 'o', alpha = 0.9)
+		lines.append(tmp)
+
 		marks_tot += len(marks_dict[subj][0])
 	
 		if args.verbose:
@@ -69,28 +87,44 @@ def get_graph():
 	if args.verbose:
 		print('La tua Media totale e\':', round(avg_all, 2))
 
-	plt.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
-	plt.axhline(y=6, alpha=0.2, color='r', linestyle='--', label='Sufficienza', linewidth=3)
-	plt.axhline(y=avg_all, alpha=0.2, color='g', linestyle='-', label='Media', linewidth=3)
+	ax.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
+	ax.axhline(y = 6, alpha = 0.2, color = 'r', linestyle = '--', label = 'Sufficienza', linewidth = 3)
+	ax.axhline(y = avg_all, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3)
 
 	if args.file or args.big:
-		plt.legend(loc=4)
-		plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.05)
+		leg = ax.legend(loc = 4)
+		leg.get_frame().set_alpha(0.4)
+
+		for legline, origline in zip(leg.get_lines(), lines):
+			legline.set_picker(5) 
+			lined[legline] = origline
+
+		fig.subplots_adjust(left = 0.02, right = 0.98, top = 0.98, bottom = 0.05)
 
 		if args.file:
-			plt.savefig(args.file + '.png' if not args.file.endswith('.png') else args.file, format='png', dpi=300)
+			fig.savefig(args.file + '.png' if not args.file.endswith('.png') else args.file, format = 'png', dpi = 300)
 			print('Grafico salvato nel file ' + args.file + ('.png' if not args.file.endswith('.png') else ''))
 
 		if args.big:
+			get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline = fig, lines, lined, legline, origline
+			fig.canvas.mpl_connect('pick_event', onpick)
 			plt.show()
 	else:
-		plt.legend(bbox_to_anchor=(1, 1), loc="upper left", prop={ 'size': 8})
-		plt.subplots_adjust(left=0.02, right=0.7, top=0.98, bottom =0.05)
+		leg = ax.legend(bbox_to_anchor = (1, 1), loc = "upper left", prop = {'size': 8})
+		leg.get_frame().set_alpha(0.4)
+
+		for legline, origline in zip(leg.get_lines(), lines):
+			legline.set_picker(5) 
+			lined[legline] = origline
+
+		fig.subplots_adjust(left = 0.02, right = 0.7, top = 0.98, bottom = 0.05)
+		get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline = fig, lines, lined, legline, origline
+		fig.canvas.mpl_connect('pick_event', onpick)
 		plt.show()
 
 def get_marks():
-	base_header={'x-cod-min': SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
-	loginheader={'x-user-id': USERNAME, 'x-pwd': PASSWORD}
+	base_header = {'x-cod-min': SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
+	loginheader = {'x-user-id': USERNAME, 'x-pwd': PASSWORD}
 	loginheader.update(base_header)
 	token = json.loads(request('login', loginheader))['token']
 	token_header = {'x-auth-token': token}
@@ -104,8 +138,8 @@ def get_marks():
 
 def request(page, header):
 	r = requests.get(
-		url=ARGOAPI_URL + page,
-		headers=header,
+		url = ARGOAPI_URL + page,
+		headers = header,
 	)
 
 	if r.status_code != requests.codes.ok:
