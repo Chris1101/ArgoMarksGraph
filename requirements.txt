@@ -1,0 +1,7 @@
+numpy
+matplotlib
+requests
+json
+argparse
+getpass
+datetime
