@@ -18,6 +18,45 @@ ARGOAPI_VERSION = '2.0.2'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
 TOGGLE = False
 
+def import_():
+	try:
+		dictionary = {}
+		subj, dates, marks = [], [], []
+		lines = open(USERNAME + '.txt', 'r').readlines()
+
+		for line in lines[::3]:
+			tmp = []
+			(lines[lines.index(line) + 1]) = (lines[lines.index(line) + 1])[:-2]
+			(lines[lines.index(line) + 2]) = (lines[lines.index(line) + 2])[:-2]
+			subj.append(line[:-1])
+
+			dictionary[line[:-1]] = [[], []]
+			dictionary[line[:-1]][0] = (lines[lines.index(line) + 1]).split(';')
+			dictionary[line[:-1]][1] = (lines[lines.index(line) + 2]).split(';')
+		
+		return dictionary
+	except:
+		return None
+
+def export_(marks_dict):
+	f = open(USERNAME + '.txt', 'w')
+
+	for subj in marks_dict:
+		f.write(subj)
+		f.write('\n')
+		
+		for mark in marks_dict[subj][0]:
+			f.write('{};'.format(mark))
+
+		f.write('\n')
+
+		for day in marks_dict[subj][1]:
+			f.write('{};'.format(day))
+
+		f.write('\n')
+
+	f.close()
+
 def onpick(event):
 	fig, lines, lined, legline, origline = get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline
 	legline = event.artist
@@ -54,7 +93,7 @@ def get_graph():
 	avg_all, marks_tot = 0, 0
 	date_all, lines = [], []
 	marks_dict, lined = {}, {}
-	time_delta, api_response = datetime.timedelta(days = 3), get_marks()
+	time_delta, imported = datetime.timedelta(days = 3), import_()
 
 	if not args.file and not args.big:
 		fig = plt.figure(figsize = (12.4, 5))
@@ -72,13 +111,30 @@ def get_graph():
 	ax.grid(which = 'major', alpha = 0.5)
 	ax.grid(which = 'minor', alpha = 0.2)
 
-	for vote in api_response['dati']:
-		if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
-			if marks_dict.get(vote['desMateria']):
-				marks_dict[vote['desMateria']][0].append(vote['decValore'])
-				marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
-			else:
-				marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
+	if args.load:
+		if not imported:
+			print('Il file con i voti non e\' presente')
+			return None
+		else:
+			print('Loading Stats...')
+
+			for subj in imported:
+				imported[subj][0] = list(map(lambda x: float(x), imported[subj][0]))
+
+			marks_dict = imported
+	else:
+		print('Downloading Stats...')
+
+		for vote in get_marks()['dati']:
+			if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
+				if marks_dict.get(vote['desMateria']):
+					marks_dict[vote['desMateria']][0].append(vote['decValore'])
+					marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
+				else:
+					marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
+
+	if args.save:
+		export_(marks_dict)
 
 	for subj in marks_dict:
 		avg_subj, date_subj = 0, []
@@ -93,7 +149,6 @@ def get_graph():
 
 		tmp, = ax.plot(date_subj[::-1], marks_dict[subj][0][::-1], label = subj, marker = 'o', alpha = 0.9)
 		lines.append(tmp)
-
 		marks_tot += len(marks_dict[subj][0])
 	
 		if args.verbose:
@@ -108,7 +163,7 @@ def get_graph():
 	ax.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
 	lines.append(ax.axhline(y = avg_all, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3))
 	ax.axhline(y = 6, alpha = 0.2, color = 'r', linestyle = '--', label = 'Sufficienza', linewidth = 3)
-	
+
 	if args.file or args.big:
 		leg = ax.legend(loc = 4)
 		leg.get_frame().set_alpha(0.4)
@@ -177,17 +232,28 @@ if __name__ == '__main__':
 	parser.add_argument('-p', '--password')
 	parser.add_argument('-f', '--file')
 	parser.add_argument('-b', '--big', action='store_true')
+	parser.add_argument('--save', action='store_true')
+	parser.add_argument('--load', action='store_true')
 	parser.add_argument('-v', '--verbose', action='store_true')
 	args = parser.parse_args()
 
+	if args.load and args.save:
+		print('Non puoi abilitare save e load assieme')
+		exit()
+
 	SCHOOL_CODE = input('Codice Scuola: ') if not args.school else args.school
-	
-	while c:
+
+	if not args.load:
+		while c:
+			USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
+			PASSWORD = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
+
+			try:
+				get_graph()
+				c = 0
+			except:
+				print('Credenziali Errate', end = '\n\n')
+				c += 1
+	else:
 		USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
-		PASSWORD = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
-		try:
-			get_graph()
-			c = 0
-		except:
-			print('Credenziali Errate', end = '\n\n')
-			c += 1
+		get_graph()
