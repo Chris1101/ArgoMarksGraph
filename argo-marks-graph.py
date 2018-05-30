@@ -241,9 +241,9 @@ if __name__ == '__main__':
 		print('Non puoi abilitare save e load assieme')
 		exit()
 
-	SCHOOL_CODE = input('Codice Scuola: ') if not args.school else args.school
-
 	if not args.load:
+		SCHOOL_CODE = input('Codice Scuola: ') if not args.school else args.school
+		
 		while c:
 			USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
 			PASSWORD = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
