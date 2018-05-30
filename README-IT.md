@@ -19,4 +19,6 @@ Python 3.6 o maggiore
     -p, --password PASSWORD           Password usata nel login
     -f, --file NOMEFILE               Salva il grafico sul file indicato (solo .png)
     -b, --big                         Visualizza un grafico di dimensioni maggiori
+    --save                            Salva la lista dei voti su un file (username.txt)
+    --load                            Carica la lista dei voti da un file (username.txt)
     -v, --verbose                     Stampa i voti
