@@ -19,4 +19,6 @@ Python 3.6 or higher
     -p, --password PASSWORD           Password used for the login
     -f, --file FILENAME               Redirect the output to an image on the specified file (.png only)
     -b, --big                         Visualizes a bigger version of the graph
+    --save                            Saves the list of votes on a file (username.txt)
+    --load                            Loads the list of votes from a file (username.txt)
     -v, --verbose                     Print marks
