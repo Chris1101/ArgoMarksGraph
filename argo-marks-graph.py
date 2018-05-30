@@ -18,27 +18,21 @@ ARGOAPI_VERSION = '2.0.2'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
 TOGGLE = False
 
-def import_():
+def fromFile():
 	try:
 		dictionary = {}
-		subj, dates, marks = [], [], []
 		lines = open(USERNAME + '.txt', 'r').readlines()
 
 		for line in lines[::3]:
-			tmp = []
-			(lines[lines.index(line) + 1]) = (lines[lines.index(line) + 1])[:-2]
-			(lines[lines.index(line) + 2]) = (lines[lines.index(line) + 2])[:-2]
-			subj.append(line[:-1])
-
 			dictionary[line[:-1]] = [[], []]
-			dictionary[line[:-1]][0] = (lines[lines.index(line) + 1]).split(';')
-			dictionary[line[:-1]][1] = (lines[lines.index(line) + 2]).split(';')
+			dictionary[line[:-1]][0] = (lines[lines.index(line) + 1])[:-2].split(';')
+			dictionary[line[:-1]][1] = (lines[lines.index(line) + 2])[:-2].split(';')
 		
 		return dictionary
 	except:
 		return None
 
-def export_(marks_dict):
+def toFile(marks_dict):
 	f = open(USERNAME + '.txt', 'w')
 
 	for subj in marks_dict:
@@ -57,8 +51,8 @@ def export_(marks_dict):
 
 	f.close()
 
-def onpick(event):
-	fig, lines, lined, legline, origline = get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline
+def onPick(event):
+	fig, lines, lined, legline, origline = getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline
 	legline = event.artist
 	origline = lined[legline]
 	vis = not origline.get_visible()
@@ -71,8 +65,8 @@ def onpick(event):
 
 	fig.canvas.draw()
 
-def onclick(event):
-	fig, lines, lined, legline, origline = get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline
+def onClick(event):
+	fig, lines, lined, legline, origline = getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline
 	global TOGGLE
 
 	if event.button == 3:
@@ -89,11 +83,36 @@ def onclick(event):
 
 	fig.canvas.draw()
 
-def get_graph():
+def getGraph():
 	avg_all, marks_tot = 0, 0
 	date_all, lines = [], []
 	marks_dict, lined = {}, {}
-	time_delta, imported = datetime.timedelta(days = 3), import_()
+	time_delta, imported = datetime.timedelta(days = 3), fromFile()
+
+	if args.load:
+		if not imported:
+			print('Il file con i voti non e\' presente')
+			return None
+		else:
+			print('\nLoading Stats...', end = '\n\n')
+
+			for subj in imported:
+				imported[subj][0] = list(map(lambda x: float(x), imported[subj][0]))
+
+			marks_dict = imported
+	else:
+		print('\nDownloading Stats...', end = '\n\n')
+
+		for vote in getMarks()['dati']:
+			if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
+				if marks_dict.get(vote['desMateria']):
+					marks_dict[vote['desMateria']][0].append(vote['decValore'])
+					marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
+				else:
+					marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
+
+	if args.save:
+		toFile(marks_dict)
 
 	if not args.file and not args.big:
 		fig = plt.figure(figsize = (12.4, 5))
@@ -110,31 +129,6 @@ def get_graph():
 	ax.set_yticks(minor_ticks, minor = True)
 	ax.grid(which = 'major', alpha = 0.5)
 	ax.grid(which = 'minor', alpha = 0.2)
-
-	if args.load:
-		if not imported:
-			print('Il file con i voti non e\' presente')
-			return None
-		else:
-			print('Loading Stats...')
-
-			for subj in imported:
-				imported[subj][0] = list(map(lambda x: float(x), imported[subj][0]))
-
-			marks_dict = imported
-	else:
-		print('Downloading Stats...')
-
-		for vote in get_marks()['dati']:
-			if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
-				if marks_dict.get(vote['desMateria']):
-					marks_dict[vote['desMateria']][0].append(vote['decValore'])
-					marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
-				else:
-					marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
-
-	if args.save:
-		export_(marks_dict)
 
 	for subj in marks_dict:
 		avg_subj, date_subj = 0, []
@@ -179,9 +173,9 @@ def get_graph():
 			print('Grafico salvato nel file ' + args.file + ('.png' if not args.file.endswith('.png') else ''))
 
 		if args.big:
-			get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline = fig, lines, lined, legline, origline
-			fig.canvas.mpl_connect('pick_event', onpick)
-			fig.canvas.mpl_connect('button_press_event', onclick)
+			getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline = fig, lines, lined, legline, origline
+			fig.canvas.mpl_connect('pick_event', onPick)
+			fig.canvas.mpl_connect('button_press_event', onClick)
 			plt.show()
 	else:
 		leg = ax.legend(bbox_to_anchor = (1, 1), loc = "upper left", prop = {'size': 8})
@@ -192,12 +186,12 @@ def get_graph():
 			lined[legline] = origline
 
 		fig.subplots_adjust(left = 0.02, right = 0.7, top = 0.98, bottom = 0.05)
-		get_graph.fig, get_graph.lines, get_graph.lined, get_graph.legline, get_graph.origline = fig, lines, lined, legline, origline
-		fig.canvas.mpl_connect('pick_event', onpick)
-		fig.canvas.mpl_connect('button_press_event', onclick)
+		getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline = fig, lines, lined, legline, origline
+		fig.canvas.mpl_connect('pick_event', onPick)
+		fig.canvas.mpl_connect('button_press_event', onClick)
 		plt.show()
 
-def get_marks():
+def getMarks():
 	base_header = {'x-cod-min': SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
 	loginheader = {'x-user-id': USERNAME, 'x-pwd': PASSWORD}
 	loginheader.update(base_header)
@@ -249,11 +243,11 @@ if __name__ == '__main__':
 			PASSWORD = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
 
 			try:
-				get_graph()
+				getGraph()
 				c = 0
 			except:
 				print('Credenziali Errate', end = '\n\n')
 				c += 1
 	else:
 		USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
-		get_graph()
+		getGraph()
