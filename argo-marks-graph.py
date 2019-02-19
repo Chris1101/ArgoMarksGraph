@@ -11,243 +11,231 @@ import datetime
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
+from pprint import pprint
 
 ARGOAPI_URL = 'https://www.portaleargo.it/famiglia/api/rest/'
 ARGOAPI_KEY = 'ax6542sdru3217t4eesd9'
 ARGOAPI_VERSION = '2.0.2'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
-TOGGLE = False
 
-def fromFile():
-	try:
-		dictionary = {}
-		lines = open(USERNAME + '.txt', 'r').readlines()
+def new_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--school')
+    parser.add_argument('-u', '--username')
+    parser.add_argument('-p', '--password')
+    parser.add_argument('-f', '--file')
+    parser.add_argument('-b', '--big',     action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('--save', action='store_true')
+    parser.add_argument('--load', action='store_true')
+    return parser.parse_args()
 
-		for line in lines[::3]:
-			dictionary[line[:-1]] = [[], []]
-			dictionary[line[:-1]][0] = (lines[lines.index(line) + 1])[:-2].split(';')
-			dictionary[line[:-1]][1] = (lines[lines.index(line) + 2])[:-2].split(';')
-		
-		return dictionary
-	except:
-		return None
+class ArgoGraph(object):
+    def __init__(self, username = None, password = None, school_code = None, args = None):
+        self.USERNAME = username
+        self.PASSWORD = password
+        self.SCHOOL_CODE = school_code
+        self.TOGGLE = False
+        self.args = args
 
-def toFile(marks_dict):
-	f = open(USERNAME + '.txt', 'w')
+        self.getGraph()
 
-	for subj in marks_dict:
-		f.write(subj)
-		f.write('\n')
-		
-		for mark in marks_dict[subj][0]:
-			f.write('{};'.format(mark))
+    def fromFile(self):
+        try:
+            return json.loads(open(self.USERNAME + '.txt', 'r').read())
+        except:
+            return None
 
-		f.write('\n')
+    def toFile(self):
+        try:
+            f = open(self.USERNAME + '.txt', 'w')
+            f.write(json.dumps(self.marks_dict, indent=4))
+            f.close()
+        except:
+            raise
 
-		for day in marks_dict[subj][1]:
-			f.write('{};'.format(day))
+    def getGraph(self):
+        average_mark, marks_sum = 0, 0
+        dates_list, lines       = [], []
+        self.marks_dict, lined  = {}, {}
+        time_delta = datetime.timedelta(days = 3)
 
-		f.write('\n')
+        if self.args.load:
+            # Imported
+            imported = self.fromFile()
+            if not imported:
+                print('Il file con i voti non e\' presente')
+                return
+            else:
+                print('\nCaricando le Statistiche...', end = '\n\n')
+                self.marks_dict = imported
+        else:
+            # Updated
+            print('\nScaricando le Statistiche...', end = '\n\n')
 
-	f.close()
+            for vote in self.getMarks()['dati']:
+                if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
+                    if self.marks_dict.get(vote['desMateria']):
+                        self.marks_dict[vote['desMateria']].append({'Voto': vote['decValore'], 'Data': vote['datGiorno']})
+                    else:
+                        self.marks_dict[vote['desMateria']] = [{'Voto': vote['decValore'], 'Data': vote['datGiorno']}]
 
-def onPick(event):
-	fig, lines, lined, legline, origline = getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline
-	legline = event.artist
-	origline = lined[legline]
-	vis = not origline.get_visible()
-	origline.set_visible(vis)
-	
-	if vis:
-		legline.set_alpha(1.0)
-	else:
-		legline.set_alpha(0.2)
+        # Save
+        if self.args.save:
+            self.toFile()
 
-	fig.canvas.draw()
+        # Start Plot Setup
+        if not self.args.file and not self.args.big:
+            self.fig = plt.figure(figsize = (12.4, 5))
+            self.ax = self.fig.add_subplot(1, 1, 1)
+        else:
+            self.fig = plt.figure(figsize = (18, 10))
+            self.ax = self.fig.add_subplot(1, 1, 1)
+        plt.gcf().canvas.set_window_title('Grafico Voti')
+        plt.grid(which = 'both')
+        major_ticks = np.arange(0, 11, 1)
+        minor_ticks = np.arange(0, 11, 0.5)
+        self.ax.set_yticks(major_ticks)
+        self.ax.set_yticks(minor_ticks, minor = True)
+        self.ax.grid(which = 'major', alpha = 0.5)
+        self.ax.grid(which = 'minor', alpha = 0.2)
+        # End Plot Setup
 
-def onClick(event):
-	fig, lines, lined, legline, origline = getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline
-	global TOGGLE
+        # Start Plot
+        for subj in self.marks_dict:
+            subj_average_mark = 0
 
-	if event.button == 3:
-		for origline in lines:
-			origline.set_visible(TOGGLE)
+            for mark_dict in self.marks_dict[subj]:
+                mark_dict['Data'] = datetime.datetime.strptime(mark_dict['Data'], '%Y-%m-%d')
+                subj_average_mark += mark_dict['Voto']
+                average_mark      += mark_dict['Voto']
 
-		for legline in lined:
-			if TOGGLE:
-				legline.set_alpha(1.0)
-			else:
-				legline.set_alpha(0.2)
+            marks = list(x['Voto'] for x in self.marks_dict[subj])
+            dates = list(x['Data'] for x in self.marks_dict[subj])
+            dates_list += dates
 
-	TOGGLE = not TOGGLE
+            # Plot, legend
+            tmp, = self.ax.plot(dates[::-1], marks[::-1], label = subj, marker = 'o', alpha = 0.9)
+            lines.append(tmp)
+            marks_sum += len(marks)
 
-	fig.canvas.draw()
+            if self.args.verbose:
+                print('{}: {}'.format(subj, str(' / '.join(str(x) for x in marks[::-1]))))
+                print('Media: {}'.format(str(round(subj_average_mark / len(marks), 2))), end='\n\n')
+        # End Plot
+        average_mark /= marks_sum
 
-def getGraph():
-	avg_all, marks_tot = 0, 0
-	date_all, lines = [], []
-	marks_dict, lined = {}, {}
-	time_delta, imported = datetime.timedelta(days = 3), fromFile()
+        if self.args.verbose:
+            print('La tua Media totale e\': {}'.format(round(average_mark, 2)))
 
-	if args.load:
-		if not imported:
-			print('Il file con i voti non e\' presente')
-			return None
-		else:
-			print('\nLoading Stats...', end = '\n\n')
+        # Axis, average
+        self.ax.axis([sorted(dates_list)[0] - time_delta, sorted(dates_list)[-1] + time_delta, 0, 10.1])
+        lines.append(self.ax.axhline(y = average_mark, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3))
+        self.ax.axhline(y = 6, alpha = 0.2, color = 'r', linestyle = '--', label = 'Sufficienza', linewidth = 3)
 
-			for subj in imported:
-				imported[subj][0] = list(map(lambda x: float(x), imported[subj][0]))
+        if self.args.file or self.args.big:
+            # Legend
+            leg = self.ax.legend(loc = 4)
+            leg.get_frame().set_alpha(0.4)
 
-			marks_dict = imported
-	else:
-		print('\nDownloading Stats...', end = '\n\n')
+            for legline, origline in zip(leg.get_lines(), lines):
+                legline.set_picker(5)
+                lined[legline] = origline
 
-		for vote in getMarks()['dati']:
-			if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
-				if marks_dict.get(vote['desMateria']):
-					marks_dict[vote['desMateria']][0].append(vote['decValore'])
-					marks_dict[vote['desMateria']][1].append(vote['datGiorno'])
-				else:
-					marks_dict[vote['desMateria']] = [vote['decValore']], [vote['datGiorno']]
+            self.fig.subplots_adjust(left = 0.02, right = 0.98, top = 0.98, bottom = 0.05)
 
-	if args.save:
-		toFile(marks_dict)
+            if self.args.file:
+                self.fig.savefig(args.file + '.png' if not args.file.endswith('.png') else args.file, format = 'png', dpi = 300)
+                print('\nGrafico salvato nel file ' + args.file + ('.png' if not args.file.endswith('.png') else ''))
 
-	if not args.file and not args.big:
-		fig = plt.figure(figsize = (12.4, 5))
-		ax = fig.add_subplot(1, 1, 1)
-	else:
-		fig = plt.figure(figsize = (18, 10))
-		ax = fig.add_subplot(1, 1, 1)
+            if self.args.big:
+                self.lines, self.lined, self.legline, self.origline = lines, lined, legline, origline
+                self.fig.canvas.mpl_connect('pick_event', self.onPick)
+                self.fig.canvas.mpl_connect('button_press_event', self.onClick)
+                plt.show()
+        else:
+            # Legend
+            leg = self.ax.legend(bbox_to_anchor = (1, 1), loc = "upper left", prop = {'size': 8})
+            leg.get_frame().set_alpha(0.4)
 
-	plt.gcf().canvas.set_window_title('Grafico Voti')
-	plt.grid(which = 'both')
-	major_ticks = np.arange(0, 11, 1)
-	minor_ticks = np.arange(0, 11, 0.5)
-	ax.set_yticks(major_ticks)
-	ax.set_yticks(minor_ticks, minor = True)
-	ax.grid(which = 'major', alpha = 0.5)
-	ax.grid(which = 'minor', alpha = 0.2)
+            for legline, origline in zip(leg.get_lines(), lines):
+                legline.set_picker(5)
+                lined[legline] = origline
 
-	for subj in marks_dict:
-		avg_subj, date_subj = 0, []
+            self.fig.subplots_adjust(left = 0.02, right = 0.7, top = 0.98, bottom = 0.05)
+            self.lines, self.lined, self.legline, self.origline = lines, lined, legline, origline
+            self.fig.canvas.mpl_connect('pick_event', self.onPick)
+            self.fig.canvas.mpl_connect('button_press_event', self.onClick)
+            plt.show()
 
-		for day in marks_dict[subj][1]:
-			date_subj.append(datetime.datetime.strptime(day, '%Y-%m-%d'))
-			date_all.append(datetime.datetime.strptime(day, '%Y-%m-%d'))
+    def getMarks(self):
+        base_header = {'x-cod-min': self.SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
+        loginheader = {'x-user-id': self.USERNAME, 'x-pwd': self.PASSWORD}
+        loginheader.update(base_header)
+        token = json.loads(self.request('login', loginheader))['token']
+        token_header = {'x-auth-token': token}
+        token_header.update(base_header)
+        userdata = json.loads(self.request('schede', token_header))[0]
+        base_header = token_header
+        data_header = dict({'x-prg-alunno': str(userdata['prgAlunno']), 'x-prg-scheda': str(userdata['prgScheda']), 'x-prg-scuola': str(userdata['prgScuola'])})
+        data_header.update(base_header)
 
-		for v in marks_dict[subj][0]:
-			avg_subj += v
-			avg_all += v
+        return json.loads(self.request('votigiornalieri', data_header))
 
-		tmp, = ax.plot(date_subj[::-1], marks_dict[subj][0][::-1], label = subj, marker = 'o', alpha = 0.9)
-		lines.append(tmp)
-		marks_tot += len(marks_dict[subj][0])
-	
-		if args.verbose:
-			print(subj + ': ' + str(' - '.join(str(x) for x in marks_dict[subj][0][::-1])))
-			print('Media: ' + str(round(avg_subj / len(marks_dict[subj][0]), 2)), end='\n\n')
+    def request(self, page, header):
+        r = requests.get(
+            url = ARGOAPI_URL + page,
+            headers = header,
+        )
 
-	avg_all /= marks_tot
+        if r.status_code != 200:
+            print('ERRORE: {}'.format(r.status_code))
+            raise ConnectionRefusedError()
 
-	if args.verbose:
-		print('La tua Media totale e\':', round(avg_all, 2))
+        return r.text
 
-	ax.axis([sorted(date_all)[0] - time_delta, sorted(date_all)[-1] + time_delta, 0, 10.1])
-	lines.append(ax.axhline(y = avg_all, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3))
-	ax.axhline(y = 6, alpha = 0.2, color = 'r', linestyle = '--', label = 'Sufficienza', linewidth = 3)
+    def onPick(self, event):
+        self.legline = event.artist
+        self.origline = self.lined[self.legline]
+        vis = not self.origline.get_visible()
+        self.origline.set_visible(vis)
+        if vis:
+            self.legline.set_alpha(1.0)
+        else:
+            self.legline.set_alpha(0.2)
+        self.fig.canvas.draw()
 
-	if args.file or args.big:
-		leg = ax.legend(loc = 4)
-		leg.get_frame().set_alpha(0.4)
-
-		for legline, origline in zip(leg.get_lines(), lines):
-			legline.set_picker(5) 
-			lined[legline] = origline
-
-		fig.subplots_adjust(left = 0.02, right = 0.98, top = 0.98, bottom = 0.05)
-
-		if args.file:
-			fig.savefig(args.file + '.png' if not args.file.endswith('.png') else args.file, format = 'png', dpi = 300)
-			print('Grafico salvato nel file ' + args.file + ('.png' if not args.file.endswith('.png') else ''))
-
-		if args.big:
-			getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline = fig, lines, lined, legline, origline
-			fig.canvas.mpl_connect('pick_event', onPick)
-			fig.canvas.mpl_connect('button_press_event', onClick)
-			plt.show()
-	else:
-		leg = ax.legend(bbox_to_anchor = (1, 1), loc = "upper left", prop = {'size': 8})
-		leg.get_frame().set_alpha(0.4)
-
-		for legline, origline in zip(leg.get_lines(), lines):
-			legline.set_picker(5) 
-			lined[legline] = origline
-
-		fig.subplots_adjust(left = 0.02, right = 0.7, top = 0.98, bottom = 0.05)
-		getGraph.fig, getGraph.lines, getGraph.lined, getGraph.legline, getGraph.origline = fig, lines, lined, legline, origline
-		fig.canvas.mpl_connect('pick_event', onPick)
-		fig.canvas.mpl_connect('button_press_event', onClick)
-		plt.show()
-
-def getMarks():
-	base_header = {'x-cod-min': SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
-	loginheader = {'x-user-id': USERNAME, 'x-pwd': PASSWORD}
-	loginheader.update(base_header)
-	token = json.loads(request('login', loginheader))['token']
-	token_header = {'x-auth-token': token}
-	token_header.update(base_header)
-	userdata = json.loads(request('schede', token_header))[0]
-	base_header = token_header
-	data_header = dict({'x-prg-alunno': str(userdata['prgAlunno']), 'x-prg-scheda': str(userdata['prgScheda']), 'x-prg-scuola': str(userdata['prgScuola'])})
-	data_header.update(base_header)
-
-	return json.loads(request('votigiornalieri', data_header))
-
-def request(page, header):
-	r = requests.get(
-		url = ARGOAPI_URL + page,
-		headers = header,
-	)
-
-	if r.status_code != requests.codes.ok:
-		print('ERRORE:', r.status_code)
-		raise ConnectionRefusedError()
-
-	return r.text
-
+    def onClick(self, event):
+        if event.button == 3:
+            for self.origline in self.lines:
+                self.origline.set_visible(self.TOGGLE)
+            for self.legline in self.lined:
+                if self.TOGGLE:
+                    self.legline.set_alpha(1.0)
+                else:
+                    self.legline.set_alpha(0.2)
+        self.TOGGLE = not self.TOGGLE
+        self.fig.canvas.draw()
 
 if __name__ == '__main__':
-	c = 1
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-s', '--school')
-	parser.add_argument('-u', '--username')
-	parser.add_argument('-p', '--password')
-	parser.add_argument('-f', '--file')
-	parser.add_argument('-b', '--big', action='store_true')
-	parser.add_argument('--save', action='store_true')
-	parser.add_argument('--load', action='store_true')
-	parser.add_argument('-v', '--verbose', action='store_true')
-	args = parser.parse_args()
+    args = new_parser()
+    c = 1
+    if args.load and args.save:
+        print('Non puoi abilitare save e load assieme')
+        exit()
+    if not args.load:
+        sc = input('Codice Scuola: ') if not args.school else args.school
 
-	if args.load and args.save:
-		print('Non puoi abilitare save e load assieme')
-		exit()
+        while c:
+            usr = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
+            pw = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
 
-	if not args.load:
-		SCHOOL_CODE = input('Codice Scuola: ') if not args.school else args.school
-		
-		while c:
-			USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
-			PASSWORD = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
-
-			try:
-				getGraph()
-				c = 0
-			except:
-				print('Credenziali Errate', end = '\n\n')
-				c += 1
-	else:
-		USERNAME = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
-		getGraph()
+            try:
+                ArgoGraph(username = usr, password = pw, school_code = sc, args = args)
+                c = 0
+            except Exception as e:
+                print('Credenziali Errate', e, end = '\n\n')
+                c += 1
+    else:
+        usr = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
+        ArgoGraph(username = usr, args = args)
