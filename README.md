@@ -20,5 +20,5 @@ Python 3.6 or higher
     -f, --file FILENAME               Redirect the output to an image on the specified file (.png only)
     -b, --big                         Visualizes a bigger version of the graph
     --save                            Exports the list of marks to the file username.txt
-    --load                            Loads the list of marks from username.txt
-    -v, --verbose                     Print marks
+    --load [FILE1,FILE2..]            Loads the list of marks from the specified files
+    -v, --verbose                     Print marks and average
