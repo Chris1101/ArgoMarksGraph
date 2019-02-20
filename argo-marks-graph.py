@@ -11,12 +11,11 @@ import datetime
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
-from pprint import pprint
 
 ARGOAPI_URL = 'https://www.portaleargo.it/famiglia/api/rest/'
 ARGOAPI_KEY = 'ax6542sdru3217t4eesd9'
 ARGOAPI_VERSION = '2.0.2'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
 
 def new_parser():
     parser = argparse.ArgumentParser()
@@ -26,8 +25,9 @@ def new_parser():
     parser.add_argument('-f', '--file')
     parser.add_argument('-b', '--big',     action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-l', '--load')
     parser.add_argument('--save', action='store_true')
-    parser.add_argument('--load', action='store_true')
+
     return parser.parse_args()
 
 class ArgoGraph(object):
@@ -38,13 +38,8 @@ class ArgoGraph(object):
         self.TOGGLE = False
         self.args = args
 
+        self.loadDicts()
         self.getGraph()
-
-    def fromFile(self):
-        try:
-            return json.loads(open(self.USERNAME + '.txt', 'r').read())
-        except:
-            return None
 
     def toFile(self):
         try:
@@ -54,31 +49,29 @@ class ArgoGraph(object):
         except:
             raise
 
-    def getGraph(self):
-        average_mark, marks_sum = 0, 0
-        dates_list, lines       = [], []
-        self.marks_dict, lined  = {}, {}
-        time_delta = datetime.timedelta(days = 3)
-
-        if self.args.load:
-            # Imported
-            imported = self.fromFile()
-            if not imported:
-                print('Il file con i voti non e\' presente')
-                return
+    def loadDicts(self):
+            if self.args.load:
+                try:
+                    print('\nCaricando le Statistiche...', end = '\n\n')
+                    self.dictionaries = [{'UserName': x, 'Dict': json.loads(open(x + '.txt', 'r').read())} for x in self.args.load.split(',')]
+                except:
+                    print('Il file con i voti non e\' presente' if len(self.args.split(',')) == 1 else 'I file con i voti non sono presenti')
+                    raise
             else:
-                print('\nCaricando le Statistiche...', end = '\n\n')
-                self.marks_dict = imported
-        else:
-            # Updated
-            print('\nScaricando le Statistiche...', end = '\n\n')
+                print('\nScaricando le Statistiche...', end = '\n\n')
+                self.marks_dict = {}
+                for vote in self.getMarks()['dati']:
+                    if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
+                        if self.marks_dict.get(vote['desMateria']):
+                            self.marks_dict[vote['desMateria']].append({'Voto': vote['decValore'], 'Data': vote['datGiorno']})
+                        else:
+                            self.marks_dict[vote['desMateria']] = [{'Voto': vote['decValore'], 'Data': vote['datGiorno']}]
+                self.dictionaries = [{'UserName': self.USERNAME, 'Dict': self.marks_dict}]
 
-            for vote in self.getMarks()['dati']:
-                if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
-                    if self.marks_dict.get(vote['desMateria']):
-                        self.marks_dict[vote['desMateria']].append({'Voto': vote['decValore'], 'Data': vote['datGiorno']})
-                    else:
-                        self.marks_dict[vote['desMateria']] = [{'Voto': vote['decValore'], 'Data': vote['datGiorno']}]
+    def getGraph(self):
+        dates_list, lines = [], []
+        lined = {}
+        time_delta = datetime.timedelta(days = 3)
 
         # Save
         if self.args.save:
@@ -102,35 +95,43 @@ class ArgoGraph(object):
         # End Plot Setup
 
         # Start Plot
-        for subj in self.marks_dict:
-            subj_average_mark = 0
-
-            for mark_dict in self.marks_dict[subj]:
-                mark_dict['Data'] = datetime.datetime.strptime(mark_dict['Data'], '%Y-%m-%d')
-                subj_average_mark += mark_dict['Voto']
-                average_mark      += mark_dict['Voto']
-
-            marks = list(x['Voto'] for x in self.marks_dict[subj])
-            dates = list(x['Data'] for x in self.marks_dict[subj])
-            dates_list += dates
-
-            # Plot, legend
-            tmp, = self.ax.plot(dates[::-1], marks[::-1], label = subj, marker = 'o', alpha = 0.9)
-            lines.append(tmp)
-            marks_sum += len(marks)
+        for self.marks_dict in self.dictionaries:
+            self.USERNAME = self.marks_dict['UserName']
+            self.marks_dict = self.marks_dict['Dict']
+            marks_sum, total_marks = 0, 0
 
             if self.args.verbose:
-                print('{}: {}'.format(subj, str(' / '.join(str(x) for x in marks[::-1]))))
-                print('Media: {}'.format(str(round(subj_average_mark / len(marks), 2))), end='\n\n')
+                print('Lista voti di {}:'.format(self.USERNAME), end = '\n\n')
+
+            for subj in self.marks_dict:
+                subj_average_mark = 0
+
+                for mark_dict in self.marks_dict[subj]:
+                    mark_dict['Data'] = datetime.datetime.strptime(mark_dict['Data'], '%Y-%m-%d')
+                    subj_average_mark += mark_dict['Voto']
+                    marks_sum         += mark_dict['Voto']
+
+                marks = list(x['Voto'] for x in self.marks_dict[subj])
+                dates = list(x['Data'] for x in self.marks_dict[subj])
+                dates_list  += dates
+                total_marks += len(marks)
+
+                # Plot, legend
+                tmp, = self.ax.plot(dates[::-1], marks[::-1], label = ('{}{}'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else '', subj)), marker = 'o', alpha = 0.9)
+                lines.append(tmp)
+
+                if self.args.verbose:
+                    print('\t{}: {}'.format(subj, str(' / '.join(str(x) for x in marks[::-1]))))
+                    print('\tMedia: {}'.format(str(round(subj_average_mark / len(marks), 2))), end='\n\n')
+
+            marks_sum /= total_marks
+            lines.append(self.ax.axhline(y = marks_sum, alpha = 0.2, color = 'g', linestyle = '-', label = '{}Media'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else ''), linewidth = 3))
+            if self.args.verbose:
+                print('\t{}, la tua media totale e\': {}'.format(self.USERNAME, round(marks_sum, 2)), end='\n\n')
         # End Plot
-        average_mark /= marks_sum
 
-        if self.args.verbose:
-            print('La tua Media totale e\': {}'.format(round(average_mark, 2)))
-
-        # Axis, average
+        # Axis, Average Line
         self.ax.axis([sorted(dates_list)[0] - time_delta, sorted(dates_list)[-1] + time_delta, 0, 10.1])
-        lines.append(self.ax.axhline(y = average_mark, alpha = 0.2, color = 'g', linestyle = '-', label = 'Media', linewidth = 3))
         self.ax.axhline(y = 6, alpha = 0.2, color = 'r', linestyle = '--', label = 'Sufficienza', linewidth = 3)
 
         if self.args.file or self.args.big:
@@ -219,13 +220,16 @@ class ArgoGraph(object):
 
 if __name__ == '__main__':
     args = new_parser()
-    c = 1
-    if args.load and args.save:
+    if args.save and args.load:
         print('Non puoi abilitare save e load assieme')
         exit()
-    if not args.load:
+    if args.load:
+        # File Loading
+        ArgoGraph(args = args)
+    else:
+        # Online Loading
         sc = input('Codice Scuola: ') if not args.school else args.school
-
+        c = 1
         while c:
             usr = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
             pw = getpass.getpass('Password: ') if not args.password else args.password if c == 1 else getpass.getpass('Password: ')
@@ -233,9 +237,9 @@ if __name__ == '__main__':
             try:
                 ArgoGraph(username = usr, password = pw, school_code = sc, args = args)
                 c = 0
-            except Exception as e:
+            except ConnectionRefusedError as e:
                 print('Credenziali Errate', e, end = '\n\n')
                 c += 1
-    else:
-        usr = input('Username: ') if not args.username else args.username if c == 1 else input('Username: ')
-        ArgoGraph(username = usr, args = args)
+            except Exception as e:
+                # print('[Exception]', e)
+                exit()
