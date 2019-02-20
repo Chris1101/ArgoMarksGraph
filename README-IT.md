@@ -20,5 +20,5 @@ Python 3.6 o maggiore
     -f, --file NOMEFILE               Salva il grafico sul file indicato (solo .png)
     -b, --big                         Visualizza un grafico di dimensioni maggiori
     --save                            Salva la lista dei voti sul file username.txt
-    --load                            Carica la lista dei voti dal file username.txt
-    -v, --verbose                     Stampa i voti
+    --load [FILE1,FILE2..]            Carica la lista dei voti dai file specificati
+    -v, --verbose                     Stampa i voti e la media
