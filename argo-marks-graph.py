@@ -8,14 +8,10 @@ import getpass
 import datetime
 
 # dependencies
+import argoscuolanext
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
-
-ARGOAPI_URL = 'https://www.portaleargo.it/famiglia/api/rest/'
-ARGOAPI_KEY = 'ax6542sdru3217t4eesd9'
-ARGOAPI_VERSION = '2.0.2'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
 
 def new_parser():
     parser = argparse.ArgumentParser()
@@ -37,7 +33,6 @@ class ArgoGraph(object):
         self.SCHOOL_CODE = school_code
         self.TOGGLE = False
         self.args = args
-
         self.loadDicts()
         self.getGraph()
 
@@ -53,14 +48,16 @@ class ArgoGraph(object):
             if self.args.load:
                 try:
                     print('\nCaricando le Statistiche...', end = '\n\n')
-                    self.dictionaries = [{'UserName': x, 'Dict': json.loads(open(x + '.txt', 'r').read())} for x in self.args.load.split(',')]
+                    self.dictionaries = [{'UserName': x, 'Dict': json.loads(open(x, 'r').read())} for x in self.args.load.split(',')]
                 except:
                     print('Il file con i voti non e\' presente' if len(self.args.split(',')) == 1 else 'I file con i voti non sono presenti')
                     raise
             else:
                 print('\nScaricando le Statistiche...', end = '\n\n')
+                self.session = argoscuolanext.Session(self.SCHOOL_CODE, self.USERNAME, self.PASSWORD)
                 self.marks_dict = {}
-                for vote in self.getMarks()['dati']:
+                
+                for vote in self.session.votigiornalieri()['dati']:
                     if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
                         if self.marks_dict.get(vote['desMateria']):
                             self.marks_dict[vote['desMateria']].append({'Voto': vote['decValore'], 'Data': vote['datGiorno']})
@@ -99,11 +96,15 @@ class ArgoGraph(object):
             self.USERNAME = self.marks_dict['UserName']
             self.marks_dict = self.marks_dict['Dict']
             marks_sum, total_marks = 0, 0
+            if len(self.dictionaries) > 1:
+                color = np.random.rand(3,)
 
             if self.args.verbose:
                 print('Lista voti di {}:'.format(self.USERNAME), end = '\n\n')
 
             for subj in self.marks_dict:
+                if len(self.dictionaries) == 1:
+                    color = np.random.rand(3,)
                 subj_average_mark = 0
 
                 for mark_dict in self.marks_dict[subj]:
@@ -117,7 +118,7 @@ class ArgoGraph(object):
                 total_marks += len(marks)
 
                 # Plot, legend
-                tmp, = self.ax.plot(dates[::-1], marks[::-1], label = ('{}{}'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else '', subj)), marker = 'o', alpha = 0.9)
+                tmp, = self.ax.plot(dates[::-1], marks[::-1], label = ('{}{}'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else '', subj)), marker = 'o', alpha = 0.9, color = color)
                 lines.append(tmp)
 
                 if self.args.verbose:
@@ -125,7 +126,7 @@ class ArgoGraph(object):
                     print('\tMedia: {}'.format(str(round(subj_average_mark / len(marks), 2))), end='\n\n')
 
             marks_sum /= total_marks
-            lines.append(self.ax.axhline(y = marks_sum, alpha = 0.2, color = 'g', linestyle = '-', label = '{}Media'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else ''), linewidth = 3))
+            lines.append(self.ax.axhline(y = marks_sum, alpha = 0.2, color = color, linestyle = '-', label = '{}Media'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else ''), linewidth = 3))
             if self.args.verbose:
                 print('\t{}, la tua media totale e\': {}'.format(self.USERNAME, round(marks_sum, 2)), end='\n\n')
         # End Plot
@@ -169,32 +170,6 @@ class ArgoGraph(object):
             self.fig.canvas.mpl_connect('button_press_event', self.onClick)
             plt.show()
 
-    def getMarks(self):
-        base_header = {'x-cod-min': self.SCHOOL_CODE, 'x-key-app': ARGOAPI_KEY, 'x-version': ARGOAPI_VERSION, 'user-agent': USER_AGENT}
-        loginheader = {'x-user-id': self.USERNAME, 'x-pwd': self.PASSWORD}
-        loginheader.update(base_header)
-        token = json.loads(self.request('login', loginheader))['token']
-        token_header = {'x-auth-token': token}
-        token_header.update(base_header)
-        userdata = json.loads(self.request('schede', token_header))[0]
-        base_header = token_header
-        data_header = dict({'x-prg-alunno': str(userdata['prgAlunno']), 'x-prg-scheda': str(userdata['prgScheda']), 'x-prg-scuola': str(userdata['prgScuola'])})
-        data_header.update(base_header)
-
-        return json.loads(self.request('votigiornalieri', data_header))
-
-    def request(self, page, header):
-        r = requests.get(
-            url = ARGOAPI_URL + page,
-            headers = header,
-        )
-
-        if r.status_code != 200:
-            print('ERRORE: {}'.format(r.status_code))
-            raise ConnectionRefusedError()
-
-        return r.text
-
     def onPick(self, event):
         self.legline = event.artist
         self.origline = self.lined[self.legline]
@@ -237,9 +212,10 @@ if __name__ == '__main__':
             try:
                 ArgoGraph(username = usr, password = pw, school_code = sc, args = args)
                 c = 0
-            except ConnectionRefusedError as e:
-                print('Credenziali Errate', e, end = '\n\n')
-                c += 1
+            # except ConnectionRefusedError as e:
+            #     print('Credenziali Errate', e, end = '\n\n')
+            #     c += 1
             except Exception as e:
                 # print('[Exception]', e)
-                exit()
+                print('Credenziali Errate', e, end = '\n\n')
+                c += 1
