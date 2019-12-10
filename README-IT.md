@@ -6,10 +6,6 @@ Strumento per visualizzare un grafico dei voti in Argo ScuolaNext.
 Python 3.6 o maggiore
 > pip install -r requirements.txt
 
-- matplotlib
-- numpy
-- requests
-
 ## Uso
     argo-marks-graph.py [OPTIONS]
 
