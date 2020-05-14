@@ -15,6 +15,7 @@ Python 3.6 or higher
     -p, --password PASSWORD           Password used for the login
     -f, --file FILENAME               Redirect the output to an image on the specified file (.png only)
     -b, --big                         Visualizes a bigger version of the graph
+    -n, --not-counted                 Uses marks that shouldn't affect the average
     --save                            Exports the list of marks to the file username.txt
     --load [FILE1,FILE2..]            Loads the list of marks from the specified files
     -v, --verbose                     Print marks and average
