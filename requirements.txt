@@ -1,4 +1,3 @@
 argoscuolanext
 numpy
 matplotlib
-requests
