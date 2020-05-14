@@ -9,7 +9,6 @@ import datetime
 
 # dependencies
 import argoscuolanext
-import requests
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,7 +18,8 @@ def new_parser():
     parser.add_argument('-u', '--username')
     parser.add_argument('-p', '--password')
     parser.add_argument('-f', '--file')
-    parser.add_argument('-b', '--big',     action='store_true')
+    parser.add_argument('-b', '--big', action='store_true')
+    parser.add_argument('-n', '--not-counted', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-l', '--load')
     parser.add_argument('--save', action='store_true')
@@ -56,13 +56,14 @@ class ArgoGraph(object):
                 print('\nScaricando le Statistiche...', end = '\n\n')
                 self.session = argoscuolanext.Session(self.SCHOOL_CODE, self.USERNAME, self.PASSWORD)
                 self.marks_dict = {}
-                
+
                 for vote in self.session.votigiornalieri()['dati']:
-                    if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
-                        if self.marks_dict.get(vote['desMateria']):
-                            self.marks_dict[vote['desMateria']].append({'Voto': vote['decValore'], 'Data': vote['datGiorno']})
-                        else:
-                            self.marks_dict[vote['desMateria']] = [{'Voto': vote['decValore'], 'Data': vote['datGiorno']}]
+                    if (vote.get('desCommento') is not None and ' (non fa media)' not in vote['desCommento']) or self.args.not_counted:
+                        if vote.get('desMateria') and vote['decValore'] and vote['datGiorno']:
+                            if self.marks_dict.get(vote['desMateria']):
+                                self.marks_dict[vote['desMateria']].append({'Voto': vote['decValore'], 'Data': vote['datGiorno']})
+                            else:
+                                self.marks_dict[vote['desMateria']] = [{'Voto': vote['decValore'], 'Data': vote['datGiorno']}]
                 self.dictionaries = [{'UserName': self.USERNAME, 'Dict': self.marks_dict}]
 
     def getGraph(self):
@@ -128,7 +129,10 @@ class ArgoGraph(object):
             marks_sum /= total_marks
             lines.append(self.ax.axhline(y = marks_sum, alpha = 0.2, color = color, linestyle = '-', label = '{}Media'.format('{}: '.format(self.USERNAME) if len(self.dictionaries) > 1 else ''), linewidth = 3))
             if self.args.verbose:
-                print('\t{}, la tua media totale e\': {}'.format(self.USERNAME, round(marks_sum, 2)), end='\n\n')
+                if self.args.not_counted:
+                    print('\t{}, la tua media totale con i voti che non fanno media e\': {}'.format(self.USERNAME, round(marks_sum, 2)), end='\n\n')
+                else:
+                    print('\t{}, la tua media totale e\': {}'.format(self.USERNAME, round(marks_sum, 2)), end='\n\n')
         # End Plot
 
         # Axis, Average Line
